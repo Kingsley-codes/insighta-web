@@ -4,39 +4,59 @@
 import { useState } from "react";
 import { Mail, Lock, User, Users } from "lucide-react";
 
+export interface LoginFormData {
+  email: string;
+  password: string;
+}
+
+export interface SignupFormData {
+  email: string;
+  password: string;
+  username: string;
+  full_name: string;
+}
+
+export type AuthFormData = LoginFormData | SignupFormData;
+
 interface AuthFormProps {
   type: "login" | "signup";
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: AuthFormData) => Promise<void>;
   isLoading: boolean;
 }
 
 export default function AuthForm({ type, onSubmit, isLoading }: AuthFormProps) {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    username: "",
-    full_name: "",
-  });
+  const [formData, setFormData] = useState<AuthFormData>(
+    type === "login"
+      ? { email: "", password: "" }
+      : { email: "", password: "", username: "", full_name: "" },
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+
+    if (type === "login") {
+      setFormData((prev) => ({
+        ...(prev as LoginFormData),
+        [name]: value,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...(prev as SignupFormData),
+        [name]: value,
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const submitData =
-      type === "login"
-        ? { email: formData.email, password: formData.password }
-        : formData;
-    await onSubmit(submitData);
+    await onSubmit(formData);
   };
+
+  const isSignup = type === "signup";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {type === "signup" && (
+      {isSignup && (
         <>
           <div>
             <label
@@ -51,7 +71,7 @@ export default function AuthForm({ type, onSubmit, isLoading }: AuthFormProps) {
                 type="text"
                 id="full_name"
                 name="full_name"
-                value={formData.full_name}
+                value={(formData as SignupFormData).full_name}
                 onChange={handleChange}
                 required
                 className="input-field pl-10"
@@ -73,7 +93,7 @@ export default function AuthForm({ type, onSubmit, isLoading }: AuthFormProps) {
                 type="text"
                 id="username"
                 name="username"
-                value={formData.username}
+                value={(formData as SignupFormData).username}
                 onChange={handleChange}
                 required
                 className="input-field pl-10"
@@ -124,10 +144,10 @@ export default function AuthForm({ type, onSubmit, isLoading }: AuthFormProps) {
             required
             className="input-field pl-10"
             placeholder="••••••••"
-            minLength={type === "signup" ? 6 : undefined}
+            minLength={isSignup ? 6 : undefined}
           />
         </div>
-        {type === "signup" && (
+        {isSignup && (
           <p className="mt-1 text-xs text-gray-500">
             Password must be at least 6 characters
           </p>
