@@ -13,10 +13,14 @@ export default function GitHubButton({
 }: GitHubButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleGitHubLogin = () => {
+  const handleGitHubLogin = async () => {
     setIsLoading(true);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    window.location.href = `${apiUrl}/auth/github`;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const res = await fetch(`${apiUrl}/auth/github`, {
+      credentials: "include",
+    });
+    const data = await res.json();
+    window.location.href = data.data.url;
   };
 
   return (

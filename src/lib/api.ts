@@ -1,8 +1,8 @@
 // lib/api.ts
 import axios, { AxiosInstance, AxiosError } from "axios";
-import { ApiError } from "@/types";
+import { ApiError, GetProfilesParams } from "@/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 class ApiClient {
   private client: AxiosInstance;
@@ -12,6 +12,7 @@ class ApiClient {
       baseURL: API_BASE_URL,
       headers: {
         "Content-Type": "application/json",
+        "X-API-Version": "1", // Required by backend
       },
       withCredentials: true, // Important for cookies
     });
@@ -26,6 +27,24 @@ class ApiClient {
         throw error;
       },
     );
+
+    // Request interceptor to always include API version
+    this.client.interceptors.request.use((config) => {
+      config.headers["X-API-Version"] = "1";
+      return config;
+    });
+  }
+
+  private buildQueryString(params: Record<string, string | number | undefined>) {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    return queryParams.toString();
   }
 
   async login(email: string, password: string) {
@@ -63,6 +82,53 @@ class ApiClient {
 
   getGitHubAuthUrl() {
     return `${API_BASE_URL}/auth/github`;
+  }
+
+  // Profile methods
+  async getProfiles(params: GetProfilesParams = {}) {
+    const queryString = this.buildQueryString(params);
+    const url = `/api/profiles${queryString ? `?${queryString}` : ""}`;
+    const response = await this.client.get(url);
+    return response.data;
+  }
+
+  async getProfileById(id: string) {
+    const response = await this.client.get(`/api/profiles/${id}`);
+    return response.data;
+  }
+
+  async createProfile(name: string) {
+    const response = await this.client.post("/api/profiles", { name });
+    return response.data;
+  }
+
+  async deleteProfile(id: string) {
+    const response = await this.client.delete(`/api/profiles/${id}`);
+    return response.data;
+  }
+
+  async searchProfiles(query: string, params: GetProfilesParams = {}) {
+    const queryString = this.buildQueryString({ q: query, ...params });
+
+    const response = await this.client.get(
+      `/api/profiles/search?${queryString}`,
+    );
+    return response.data;
+  }
+
+  async exportProfiles(
+    format: "csv" = "csv",
+    filters: Partial<GetProfilesParams> = {},
+  ) {
+    const queryString = this.buildQueryString({ format, ...filters });
+
+    const response = await this.client.get(
+      `/api/profiles/export?${queryString}`,
+      {
+        responseType: "blob",
+      },
+    );
+    return response.data;
   }
 
   // Helper to check if user is authenticated

@@ -7,8 +7,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { BarChart3, ArrowLeft } from "lucide-react";
-import AuthForm, { AuthFormData } from "@/components/AuthForm";
-import GitHubButton from "@/components/GitHubButton";
+import AuthForm, { AuthFormData } from "@/components/authentication/AuthForm";
+import GitHubButton from "@/components/authentication/GitHubButton";
 import apiClient from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-handler";
 
