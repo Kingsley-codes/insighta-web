@@ -68,6 +68,7 @@ export interface ProfileResponse {
 }
 
 export interface GetProfilesParams {
+  [key: string]: string | number | undefined; // add this
   page?: number;
   limit?: number;
   sort_by?: "age" | "created_at" | "gender_probability";
