@@ -12,7 +12,7 @@ class ApiClient {
       baseURL: API_BASE_URL,
       headers: {
         "Content-Type": "application/json",
-        "X-API-Version": "1", // Required by backend
+        "X-API-Version": "1.0", // Required by backend
       },
       withCredentials: true, // Important for cookies
     });
@@ -30,7 +30,7 @@ class ApiClient {
 
     // Request interceptor to always include API version
     this.client.interceptors.request.use((config) => {
-      config.headers["X-API-Version"] = "1";
+      config.headers["X-API-Version"] = "1.0";
       return config;
     });
   }
@@ -60,12 +60,14 @@ class ApiClient {
     password: string,
     username: string,
     full_name: string,
+    role: "admin" | "analyst",
   ) {
     const response = await this.client.post("/auth/signup", {
       email,
       password,
       username,
       full_name,
+      role,
     });
     return response.data;
   }

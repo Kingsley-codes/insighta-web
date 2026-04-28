@@ -18,6 +18,7 @@ export interface SignupRequest {
   password: string;
   username: string;
   full_name: string;
+  role: "admin" | "analyst";
 }
 
 export interface AuthResponse {

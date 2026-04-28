@@ -1,8 +1,15 @@
-// components/AuthForm.tsx
 "use client";
 
 import { useState } from "react";
-import { Mail, Lock, User, Users } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  ShieldCheck,
+  User,
+  Users,
+} from "lucide-react";
 
 export interface LoginFormData {
   email: string;
@@ -14,6 +21,7 @@ export interface SignupFormData {
   password: string;
   username: string;
   full_name: string;
+  role: "admin" | "analyst";
 }
 
 export type AuthFormData = LoginFormData | SignupFormData;
@@ -25,13 +33,22 @@ interface AuthFormProps {
 }
 
 export default function AuthForm({ type, onSubmit, isLoading }: AuthFormProps) {
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<AuthFormData>(
     type === "login"
       ? { email: "", password: "" }
-      : { email: "", password: "", username: "", full_name: "" },
+      : {
+          email: "",
+          password: "",
+          username: "",
+          full_name: "",
+          role: "analyst",
+        },
   );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
 
     if (type === "login") {
@@ -61,12 +78,12 @@ export default function AuthForm({ type, onSubmit, isLoading }: AuthFormProps) {
           <div>
             <label
               htmlFor="full_name"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="mb-2 block text-sm font-medium text-gray-700"
             >
               Full Name
             </label>
             <div className="relative">
-              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Users className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 id="full_name"
@@ -83,12 +100,12 @@ export default function AuthForm({ type, onSubmit, isLoading }: AuthFormProps) {
           <div>
             <label
               htmlFor="username"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="mb-2 block text-sm font-medium text-gray-700"
             >
               Username
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 id="username"
@@ -101,18 +118,41 @@ export default function AuthForm({ type, onSubmit, isLoading }: AuthFormProps) {
               />
             </div>
           </div>
+
+          <div>
+            <label
+              htmlFor="role"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Role
+            </label>
+            <div className="relative">
+              <ShieldCheck className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <select
+                id="role"
+                name="role"
+                value={(formData as SignupFormData).role}
+                onChange={handleChange}
+                required
+                className="input-field pl-10"
+              >
+                <option value="analyst">Analyst</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
         </>
       )}
 
       <div>
         <label
           htmlFor="email"
-          className="block text-sm font-medium text-gray-700 mb-2"
+          className="mb-2 block text-sm font-medium text-gray-700"
         >
           Email Address
         </label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
           <input
             type="email"
             id="email"
@@ -129,27 +169,40 @@ export default function AuthForm({ type, onSubmit, isLoading }: AuthFormProps) {
       <div>
         <label
           htmlFor="password"
-          className="block text-sm font-medium text-gray-700 mb-2"
+          className="mb-2 block text-sm font-medium text-gray-700"
         >
           Password
         </label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             id="password"
             name="password"
             value={formData.password}
             onChange={handleChange}
             required
-            className="input-field pl-10"
-            placeholder="••••••••"
-            minLength={isSignup ? 6 : undefined}
+            className="input-field pl-10 pr-12"
+            placeholder="********"
+            minLength={isSignup ? 8 : undefined}
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((current) => !current)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? (
+              <EyeOff className="h-5 w-5" />
+            ) : (
+              <Eye className="h-5 w-5" />
+            )}
+          </button>
         </div>
         {isSignup && (
           <p className="mt-1 text-xs text-gray-500">
-            Password must be at least 6 characters
+            Password must be at least 8 characters and include uppercase,
+            lowercase, a number, and a special character.
           </p>
         )}
       </div>

@@ -7,7 +7,9 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { BarChart3, ArrowLeft } from "lucide-react";
-import AuthForm, { AuthFormData } from "@/components/authentication/AuthForm";
+import AuthForm, {
+  AuthFormData,
+} from "../../components/authentication/AuthForm";
 import GitHubButton from "@/components/authentication/GitHubButton";
 import apiClient from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-handler";
@@ -18,7 +20,7 @@ export default function SignupPage() {
 
   const handleSignup = async (data: AuthFormData) => {
     // Type guard to ensure we have signup data
-    if ("username" in data && "full_name" in data) {
+    if ("username" in data && "full_name" in data && "role" in data) {
       setIsLoading(true);
       try {
         const response = await apiClient.signup(
@@ -26,6 +28,7 @@ export default function SignupPage() {
           data.password,
           data.username,
           data.full_name,
+          data.role,
         );
 
         if (response.status === "success") {
