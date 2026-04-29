@@ -1,11 +1,21 @@
 // lib/api.ts
-import axios, { AxiosInstance, AxiosError } from "axios";
+import axios, {
+  AxiosInstance,
+  AxiosError,
+  InternalAxiosRequestConfig,
+} from "axios";
 import { ApiError, GetProfilesParams } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
+interface RetryableRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+  skipAuthRefresh?: boolean;
+}
+
 class ApiClient {
   private client: AxiosInstance;
+  private refreshPromise: Promise<void> | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -20,11 +30,27 @@ class ApiClient {
     // Response interceptor for error handling
     this.client.interceptors.response.use(
       (response) => response,
-      (error: AxiosError<ApiError>) => {
-        if (error.response?.data?.message) {
-          throw new Error(error.response.data.message);
+      async (error: AxiosError<ApiError>) => {
+        const originalRequest = error.config as
+          | RetryableRequestConfig
+          | undefined;
+
+        if (
+          error.response?.status === 401 &&
+          originalRequest &&
+          this.shouldAttemptRefresh(originalRequest)
+        ) {
+          originalRequest._retry = true;
+
+          try {
+            await this.refreshAccessToken();
+            return this.client(originalRequest);
+          } catch (refreshError) {
+            throw this.normalizeError(refreshError);
+          }
         }
-        throw error;
+
+        throw this.normalizeError(error);
       },
     );
 
@@ -33,6 +59,48 @@ class ApiClient {
       config.headers["X-API-Version"] = "1.0";
       return config;
     });
+  }
+
+  private shouldAttemptRefresh(config?: RetryableRequestConfig) {
+    if (!config || config._retry || config.skipAuthRefresh) {
+      return false;
+    }
+
+    const url = config.url ?? "";
+    const refreshExcludedRoutes = [
+      "/auth/login",
+      "/auth/signup",
+      "/auth/logout",
+      "/auth/refresh",
+      "/auth/github",
+    ];
+
+    return !refreshExcludedRoutes.some((route) => url.includes(route));
+  }
+
+  private normalizeError(error: unknown) {
+    if (axios.isAxiosError<ApiError>(error) && error.response?.data?.message) {
+      return new Error(error.response.data.message);
+    }
+
+    return error;
+  }
+
+  private async refreshAccessToken(): Promise<void> {
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.client
+        .post(
+          "/auth/refresh",
+          {},
+          { skipAuthRefresh: true } as RetryableRequestConfig,
+        )
+        .then(() => undefined)
+        .finally(() => {
+          this.refreshPromise = null;
+        });
+    }
+
+    return this.refreshPromise;
   }
 
   private buildQueryString(params: Record<string, string | number | undefined>) {
