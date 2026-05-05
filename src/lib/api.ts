@@ -89,11 +89,9 @@ class ApiClient {
   private async refreshAccessToken(): Promise<void> {
     if (!this.refreshPromise) {
       this.refreshPromise = this.client
-        .post(
-          "/auth/refresh",
-          {},
-          { skipAuthRefresh: true } as RetryableRequestConfig,
-        )
+        .post("/auth/refresh", {}, {
+          skipAuthRefresh: true,
+        } as RetryableRequestConfig)
         .then(() => undefined)
         .finally(() => {
           this.refreshPromise = null;
@@ -103,7 +101,9 @@ class ApiClient {
     return this.refreshPromise;
   }
 
-  private buildQueryString(params: Record<string, string | number | undefined>) {
+  private buildQueryString(
+    params: Record<string, string | number | undefined>,
+  ) {
     const queryParams = new URLSearchParams();
 
     Object.entries(params).forEach(([key, value]) => {
@@ -196,6 +196,19 @@ class ApiClient {
       `/api/profiles/export?${queryString}`,
       {
         responseType: "blob",
+      },
+    );
+    return response.data;
+  }
+
+  async importProfiles(csvContent: string) {
+    const response = await this.client.post(
+      "/api/profiles/import",
+      csvContent,
+      {
+        headers: {
+          "Content-Type": "text/csv",
+        },
       },
     );
     return response.data;

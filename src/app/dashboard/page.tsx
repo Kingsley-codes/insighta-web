@@ -13,6 +13,7 @@ import {
   Shield,
   Sparkles,
   Trash2,
+  Upload,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -59,8 +60,11 @@ export default function DashboardPage() {
   const [page, setPage] = useState(1);
   const [nlpInput, setNlpInput] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState("");
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
+    null,
+  );
   const [newProfileName, setNewProfileName] = useState("");
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   const hasStructuredFilters = Object.entries(filters).some(([key, value]) => {
     if (key === "limit" || key === "sort_by" || key === "order") {
@@ -72,7 +76,9 @@ export default function DashboardPage() {
 
   const profilesQuery = useQuery<ProfilesResponse>({
     queryKey: ["profiles", viewMode, page, filters, submittedSearch],
-    enabled: isAuthenticated && (viewMode === "browse" || submittedSearch.trim().length > 0),
+    enabled:
+      isAuthenticated &&
+      (viewMode === "browse" || submittedSearch.trim().length > 0),
     queryFn: async () => {
       if (viewMode === "search") {
         return apiClient.searchProfiles(submittedSearch, {
@@ -97,7 +103,8 @@ export default function DashboardPage() {
   const detailQuery = useQuery<ProfileResponse>({
     queryKey: ["profile", resolvedSelectedProfileId],
     enabled: Boolean(resolvedSelectedProfileId && isAuthenticated),
-    queryFn: async () => apiClient.getProfileById(resolvedSelectedProfileId as string),
+    queryFn: async () =>
+      apiClient.getProfileById(resolvedSelectedProfileId as string),
   });
 
   const createMutation = useMutation({
@@ -136,11 +143,27 @@ export default function DashboardPage() {
       return apiClient.exportProfiles("csv", filters);
     },
     onSuccess: (blob) => {
-      downloadBlob(blob, `profiles-export-${new Date().toISOString().slice(0, 10)}.csv`);
+      downloadBlob(
+        blob,
+        `profiles-export-${new Date().toISOString().slice(0, 10)}.csv`,
+      );
       toast.success("CSV export ready");
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Failed to export profiles"));
+    },
+  });
+
+  const importMutation = useMutation({
+    mutationFn: async (csvContent: string) =>
+      apiClient.importProfiles(csvContent),
+    onSuccess: (data) => {
+      toast.success(`Imported ${data.data.imported} profiles successfully`);
+      setImportFile(null);
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Failed to import profiles"));
     },
   });
 
@@ -167,6 +190,18 @@ export default function DashboardPage() {
     }
 
     createMutation.mutate(trimmed);
+  };
+
+  const handleImportProfiles = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!importFile) {
+      toast.error("Select a CSV file to import");
+      return;
+    }
+
+    const csvContent = await importFile.text();
+    importMutation.mutate(csvContent);
   };
 
   const totalResults = profilesQuery.data?.total ?? 0;
@@ -215,7 +250,9 @@ export default function DashboardPage() {
                 {profilesQuery.isLoading ? "..." : totalResults}
               </p>
               <p className="mt-1 text-sm text-slate-300">
-                {viewMode === "search" ? "Natural language search" : "Structured browse"}
+                {viewMode === "search"
+                  ? "Natural language search"
+                  : "Structured browse"}
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
@@ -322,7 +359,9 @@ export default function DashboardPage() {
                 </label>
 
                 <label className="text-sm text-slate-200">
-                  <span className="mb-2 block text-slate-300">Country code</span>
+                  <span className="mb-2 block text-slate-300">
+                    Country code
+                  </span>
                   <input
                     value={filters.country_id ?? ""}
                     onChange={(event) => {
@@ -345,7 +384,8 @@ export default function DashboardPage() {
                       setPage(1);
                       setFilters((current) => ({
                         ...current,
-                        sort_by: event.target.value as GetProfilesParams["sort_by"],
+                        sort_by: event.target
+                          .value as GetProfilesParams["sort_by"],
                       }));
                     }}
                     className="input-field border-white/10 bg-slate-950/60 text-white"
@@ -368,7 +408,9 @@ export default function DashboardPage() {
                       setPage(1);
                       setFilters((current) => ({
                         ...current,
-                        min_age: event.target.value ? Number(event.target.value) : undefined,
+                        min_age: event.target.value
+                          ? Number(event.target.value)
+                          : undefined,
                       }));
                     }}
                     className="input-field border-white/10 bg-slate-950/60 text-white"
@@ -385,7 +427,9 @@ export default function DashboardPage() {
                       setPage(1);
                       setFilters((current) => ({
                         ...current,
-                        max_age: event.target.value ? Number(event.target.value) : undefined,
+                        max_age: event.target.value
+                          ? Number(event.target.value)
+                          : undefined,
                       }));
                     }}
                     className="input-field border-white/10 bg-slate-950/60 text-white"
@@ -411,7 +455,9 @@ export default function DashboardPage() {
                 </label>
 
                 <label className="text-sm text-slate-200">
-                  <span className="mb-2 block text-slate-300">Rows per page</span>
+                  <span className="mb-2 block text-slate-300">
+                    Rows per page
+                  </span>
                   <select
                     value={filters.limit ?? 10}
                     onChange={(event) => {
@@ -531,7 +577,10 @@ export default function DashboardPage() {
                   <tbody className="divide-y divide-white/10 bg-slate-950/20 text-sm">
                     {profilesQuery.isLoading ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-10 text-center text-slate-300">
+                        <td
+                          colSpan={5}
+                          className="px-4 py-10 text-center text-slate-300"
+                        >
                           <span className="inline-flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             Loading profiles
@@ -542,7 +591,10 @@ export default function DashboardPage() {
 
                     {!profilesQuery.isLoading && profiles.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-10 text-center text-slate-300">
+                        <td
+                          colSpan={5}
+                          className="px-4 py-10 text-center text-slate-300"
+                        >
                           No profiles found for this query.
                         </td>
                       </tr>
@@ -552,7 +604,9 @@ export default function DashboardPage() {
                       <tr
                         key={profile.id}
                         className={`transition hover:bg-white/5 ${
-                          resolvedSelectedProfileId === profile.id ? "bg-sky-400/10" : ""
+                          resolvedSelectedProfileId === profile.id
+                            ? "bg-sky-400/10"
+                            : ""
                         }`}
                       >
                         <td className="px-4 py-4">
@@ -561,13 +615,22 @@ export default function DashboardPage() {
                             onClick={() => setSelectedProfileId(profile.id)}
                             className="text-left"
                           >
-                            <p className="font-medium text-white">{profile.name}</p>
-                            <p className="text-xs text-slate-400">{profile.id}</p>
+                            <p className="font-medium text-white">
+                              {profile.name}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {profile.id}
+                            </p>
                           </button>
                         </td>
-                        <td className="px-4 py-4 text-slate-200">{profile.gender}</td>
                         <td className="px-4 py-4 text-slate-200">
-                          {profile.age} <span className="text-xs text-slate-400">({profile.age_group})</span>
+                          {profile.gender}
+                        </td>
+                        <td className="px-4 py-4 text-slate-200">
+                          {profile.age}{" "}
+                          <span className="text-xs text-slate-400">
+                            ({profile.age_group})
+                          </span>
                         </td>
                         <td className="px-4 py-4 text-slate-200">
                           {profile.country_name} ({profile.country_id})
@@ -584,7 +647,9 @@ export default function DashboardPage() {
                             {isAdmin ? (
                               <button
                                 type="button"
-                                onClick={() => deleteMutation.mutate(profile.id)}
+                                onClick={() =>
+                                  deleteMutation.mutate(profile.id)
+                                }
                                 disabled={deleteMutation.isPending}
                                 className="inline-flex items-center gap-1 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-100 transition hover:bg-rose-500/20 disabled:opacity-60"
                               >
@@ -603,7 +668,10 @@ export default function DashboardPage() {
 
             {profilesQuery.isError ? (
               <div className="mt-4 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-                {getErrorMessage(profilesQuery.error, "Failed to load profiles")}
+                {getErrorMessage(
+                  profilesQuery.error,
+                  "Failed to load profiles",
+                )}
               </div>
             ) : null}
 
@@ -622,7 +690,9 @@ export default function DashboardPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  onClick={() =>
+                    setPage((current) => Math.min(totalPages, current + 1))
+                  }
                   disabled={page >= totalPages || profilesQuery.isLoading}
                   className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-50"
                 >
@@ -652,7 +722,9 @@ export default function DashboardPage() {
 
               <form onSubmit={handleCreateProfile} className="mt-5 space-y-3">
                 <label className="block text-sm text-slate-200">
-                  <span className="mb-2 block text-slate-300">Profile name</span>
+                  <span className="mb-2 block text-slate-300">
+                    Profile name
+                  </span>
                   <input
                     value={newProfileName}
                     onChange={(event) => setNewProfileName(event.target.value)}
@@ -674,6 +746,37 @@ export default function DashboardPage() {
                   Create profile
                 </button>
               </form>
+
+              <div className="mt-6 border-t border-white/10 pt-6">
+                <form onSubmit={handleImportProfiles} className="space-y-3">
+                  <label className="block text-sm text-slate-200">
+                    <span className="mb-2 block text-slate-300">
+                      Import CSV
+                    </span>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={(event) =>
+                        setImportFile(event.target.files?.[0] || null)
+                      }
+                      className="input-field border-white/10 bg-slate-950/60 text-white file:mr-4 file:rounded-lg file:border-0 file:bg-sky-500 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-white file:hover:bg-sky-400"
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={importMutation.isPending || !importFile}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:opacity-60"
+                  >
+                    {importMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    Import profiles
+                  </button>
+                </form>
+              </div>
             </div>
           ) : (
             <div className="rounded-3xl border border-white/10 bg-white/6 p-5 shadow-xl backdrop-blur">
@@ -686,7 +789,8 @@ export default function DashboardPage() {
                     Analyst access
                   </h2>
                   <p className="text-sm text-slate-300">
-                    Read-only access is active. Search, filter, inspect, and export.
+                    Read-only access is active. Search, filter, inspect, and
+                    export.
                   </p>
                 </div>
               </div>
@@ -771,7 +875,10 @@ export default function DashboardPage() {
 
             {detailQuery.isError ? (
               <div className="mt-4 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-                {getErrorMessage(detailQuery.error, "Failed to load profile detail")}
+                {getErrorMessage(
+                  detailQuery.error,
+                  "Failed to load profile detail",
+                )}
               </div>
             ) : null}
           </div>
